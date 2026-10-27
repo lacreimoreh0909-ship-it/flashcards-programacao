@@ -1,1 +1,814 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevCards - Flashcards de Programação</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
 
+    <style>
+        /* Estilos para o Efeito 3D Flip Card */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+
+        .transform-style-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Sombras e profundidade */
+        .card-shadow {
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.3), 0 10px 15px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Barra de rolagem customizada */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-purple-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-500 to-pink-500 flex items-center justify-center text-white text-xl shadow-lg shadow-purple-500/25">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-300 bg-clip-text text-transparent">DevCards</h1>
+                    <p class="text-xs text-slate-400">Flashcards Interativos de Programação</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="btn-open-modal" class="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-sm rounded-xl transition duration-200 shadow-lg shadow-purple-600/25 flex items-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Criar Card</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6 flex flex-col items-center justify-center">
+
+        <!-- Categorias e Filtros -->
+        <div class="w-full mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Filtrar Categoria</span>
+                <span id="stats-counter" class="text-xs text-slate-400 font-medium bg-slate-900 px-3 py-1 rounded-full border border-slate-800">0 Cards</span>
+            </div>
+            <div id="category-filters" class="flex flex-wrap gap-2 overflow-x-auto pb-1">
+                <!-- Filtros renderizados dinamicamente via JS -->
+            </div>
+        </div>
+
+        <!-- Barra de Progresso e Ações Principais -->
+        <div class="w-full bg-slate-900/60 p-4 rounded-2xl border border-slate-800 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-sm">
+            <div class="w-full sm:w-1/2">
+                <div class="flex justify-between items-center text-sm mb-1.5 font-medium">
+                    <span class="text-slate-300">Progresso do Card</span>
+                    <span id="card-indicator" class="text-purple-400 font-bold">0 de 0</span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
+                    <div id="progress-bar" class="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button id="btn-shuffle" title="Embaralhar Cards" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition border border-slate-700 text-sm font-medium flex items-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-shuffle text-purple-400"></i>
+                    <span>Embaralhar</span>
+                </button>
+                <button id="btn-reset-mastery" title="Reiniciar Aprendizado" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition border border-slate-700 text-sm font-medium flex items-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-rotate-left text-amber-400"></i>
+                    <span>Resetar Status</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Área Central do Flashcard 3D -->
+        <div class="w-full max-w-2xl h-[420px] sm:h-[450px] perspective-1000 my-2 relative">
+            
+            <!-- Mensagem de lista vazia -->
+            <div id="empty-state" class="hidden absolute inset-0 bg-slate-900/80 rounded-3xl border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-8 text-center z-10 backdrop-blur-md">
+                <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-2xl mb-4 border border-slate-700">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-200 mb-1">Nenhum Flashcard encontrado</h3>
+                <p class="text-slate-400 text-sm max-w-md mb-6">Não há cards para a categoria selecionada.</p>
+                <button onclick="resetFilters()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm rounded-xl transition shadow-lg shadow-purple-600/30">
+                    Ver Todos os Cards
+                </button>
+            </div>
+
+            <!-- Card Flip Container -->
+            <div id="card-inner" class="w-full h-full transform-style-3d relative cursor-pointer select-none">
+                
+                <!-- FRENTE DO CARD (Pergunta) -->
+                <div id="card-front" class="absolute inset-0 w-full h-full backface-hidden rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-white/10 card-shadow transition-all duration-300">
+                    <!-- Topo do Card -->
+                    <div class="flex justify-between items-center">
+                        <span id="card-category-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white bg-black/30 border border-white/20 backdrop-blur-md shadow-sm">
+                            Categoria
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span id="card-mastered-badge" class="hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 backdrop-blur-md">
+                                <i class="fa-solid fa-check text-xs mr-1"></i> Dominado
+                            </span>
+                            <button id="btn-delete-card" title="Excluir este Card" class="w-8 h-8 rounded-full bg-black/20 hover:bg-red-500/30 hover:text-red-200 text-slate-300 transition flex items-center justify-center backdrop-blur-md">
+                                <i class="fa-regular fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Conteúdo Central / Pergunta -->
+                    <div class="my-auto text-center px-2 py-2 overflow-y-auto max-h-[260px]">
+                        <span class="text-xs uppercase font-semibold text-white/70 tracking-widest block mb-2">Pergunta</span>
+                        <h2 id="card-question" class="text-xl sm:text-2xl font-extrabold text-white leading-relaxed drop-shadow-sm">
+                            Carregando pergunta...
+                        </h2>
+                        <div id="card-question-code" class="hidden mt-4 text-left font-mono text-xs sm:text-sm bg-slate-950/80 p-4 rounded-2xl border border-white/15 overflow-x-auto text-emerald-300 shadow-inner"></div>
+                    </div>
+
+                    <!-- Rodapé do Card -->
+                    <div class="flex justify-between items-center text-xs font-medium text-white/80 pt-4 border-t border-white/15">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate-right"></i> Clique para revelar a resposta
+                        </span>
+                        <i class="fa-solid fa-arrow-right-long text-lg opacity-80"></i>
+                    </div>
+                </div>
+
+                <!-- VERSO DO CARD (Resposta) -->
+                <div id="card-back" class="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-slate-700/80 card-shadow bg-slate-900 transition-all duration-300">
+                    <!-- Topo do Card Verso -->
+                    <div class="flex justify-between items-center">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-purple-300 bg-purple-950/70 border border-purple-700/60 shadow-sm">
+                            Resposta
+                        </span>
+                        <span id="card-difficulty-tag" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700">
+                            Sem Avaliação
+                        </span>
+                    </div>
+
+                    <!-- Conteúdo Central / Resposta -->
+                    <div class="my-auto text-left px-2 py-2 overflow-y-auto max-h-[250px]">
+                        <p id="card-answer" class="text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
+                            Carregando resposta...
+                        </p>
+                        <div id="card-answer-code" class="hidden mt-3 font-mono text-xs sm:text-sm bg-slate-950 p-4 rounded-2xl border border-slate-800 overflow-x-auto text-sky-300 shadow-inner"></div>
+                    </div>
+
+                    <!-- Botões de Autoavaliação e Status -->
+                    <div class="pt-4 border-t border-slate-800 flex flex-col gap-3" onclick="event.stopPropagation()">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-semibold text-slate-400">Como foi sua resposta?</span>
+                            <button id="btn-toggle-master" class="text-xs font-medium px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700">
+                                <i class="fa-solid fa-check"></i>
+                                <span>Marcar como Dominado</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="rateCard('Dificil')" class="py-2.5 bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 rounded-xl text-xs font-bold transition text-center active:scale-95 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-face-frown"></i> Difícil
+                            </button>
+                            <button onclick="rateCard('Medio')" class="py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition text-center active:scale-95 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-face-meh"></i> Médio
+                            </button>
+                            <button onclick="rateCard('Facil')" class="py-2.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition text-center active:scale-95 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-face-smile"></i> Fácil
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Botões de Navegação -->
+        <div class="flex items-center justify-between w-full max-w-2xl mt-6 gap-3">
+            <button id="btn-prev" class="flex-1 py-3.5 px-5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-2xl transition border border-slate-800 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg">
+                <i class="fa-solid fa-chevron-left text-sm"></i>
+                <span>Anterior</span>
+            </button>
+            <button id="btn-flip-action" class="py-3.5 px-6 bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 border border-purple-500/30 font-semibold rounded-2xl transition flex items-center justify-center gap-2 active:scale-95 shadow-lg">
+                <i class="fa-solid fa-rotate text-purple-400"></i>
+                <span>Girar</span>
+            </button>
+            <button id="btn-next" class="flex-1 py-3.5 px-5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-2xl transition border border-slate-800 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg">
+                <span>Próximo</span>
+                <i class="fa-solid fa-chevron-right text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Dica de Atalhos -->
+        <p class="text-xs text-slate-500 mt-6 text-center">
+            <i class="fa-regular fa-keyboard mr-1"></i> Atalhos: <kbd class="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-400 font-mono">Espaço</kbd> para Girar | <kbd class="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-400 font-mono">←</kbd> <kbd class="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-400 font-mono">→</kbd> para Navegar
+        </p>
+    </main>
+
+    <!-- Modal para Criar Novo Flashcard -->
+    <div id="modal-create" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl transform transition-all">
+            
+            <div class="flex items-center justify-between px-6 py-5 border-b border-slate-800">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-purple-400"></i>
+                    Criar Novo Flashcard
+                </h3>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-white transition w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-800">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="form-create-card" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Categoria / Linguagem</label>
+                    <select id="input-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-purple-500 font-medium">
+                        <option value="JavaScript">JavaScript</option>
+                        <option value="Python">Python</option>
+                        <option value="HTML/CSS">HTML/CSS</option>
+                        <option value="React">React</option>
+                        <option value="Lógica de Programação">Lógica de Programação</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Pergunta</label>
+                    <textarea id="input-question" required rows="2" placeholder="Ex: O que é uma Arrow Function?" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-medium resize-none text-sm"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Código da Pergunta (Opcional)</label>
+                    <textarea id="input-question-code" rows="2" placeholder="Ex: const soma = (a, b) => a + b;" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-emerald-400 font-mono text-xs placeholder-slate-600 focus:outline-none focus:border-purple-500 resize-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Resposta / Explicação</label>
+                    <textarea id="input-answer" required rows="3" placeholder="Ex: É uma sintaxe curta para escrever funções em JavaScript..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-medium resize-none text-sm"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Código da Resposta (Opcional)</label>
+                    <textarea id="input-answer-code" rows="2" placeholder="Ex: console.log(soma(2, 3)); // 5" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sky-300 font-mono text-xs placeholder-slate-600 focus:outline-none focus:border-purple-500 resize-none"></textarea>
+                </div>
+
+                <div class="pt-3 flex items-center justify-end gap-3">
+                    <button type="button" id="btn-cancel-modal" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-sm transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-sm transition shadow-lg shadow-purple-600/30">
+                        Salvar Flashcard
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script da Aplicação -->
+    <script>
+        // Data inicial com 12 flashcards de programação variados
+        const initialCards = [
+            {
+                id: '1',
+                category: 'JavaScript',
+                question: 'Qual a diferença principal entre "==" e "===" em JavaScript?',
+                questionCode: 'console.log(5 == "5");  // true\nconsole.log(5 === "5"); // false',
+                answer: 'O operador "==" compara os valores realizando conversão de tipos (coerção). O operador "===" (igualdade estrita) compara o valor e o tipo de dado sem nenhuma conversão.',
+                answerCode: '',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '2',
+                category: 'Python',
+                question: 'O que faz uma List Comprehension em Python e qual sua vantagem?',
+                questionCode: '',
+                answer: 'É uma sintaxe concisa para criar listas a partir de iteráveis existentes. Ela substitui loops for tradicionais com um código mais limpo e rápido.',
+                answerCode: 'quadrados = [x**2 for x in range(10) if x % 2 == 0]\n# Resultado: [0, 4, 16, 36, 64]',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '3',
+                category: 'HTML/CSS',
+                question: 'Para que serve a propriedade "box-sizing: border-box"?',
+                questionCode: 'div {\n  box-sizing: border-box;\n  width: 200px;\n  padding: 20px;\n}',
+                answer: 'Garante que o padding e a borda sejam incluídos dentro da largura e altura totais do elemento, evitando que ele ultrapasse as dimensões definidas.',
+                answerCode: '',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '4',
+                category: 'React',
+                question: 'O que é o hook useState e como ele é utilizado?',
+                questionCode: 'const [contador, setContador] = useState(0);',
+                answer: 'É um hook que permite adicionar o estado do React a componentes funcionais. Ele retorna o valor atual do estado e uma função para atualizá-lo.',
+                answerCode: '<button onClick={() => setContador(contador + 1)}>\n  Incrementar\n</button>',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '5',
+                category: 'Lógica de Programação',
+                question: 'O que é Recursividade em algoritmos?',
+                questionCode: '',
+                answer: 'Recursividade ocorre quando uma função chama a si mesma para resolver um problema dividindo-o em subproblemas menores. Exige obrigatoriamente um "caso base" para interromper a execução.',
+                answerCode: 'function fatorial(n) {\n  if (n <= 1) return 1; // Caso base\n  return n * fatorial(n - 1); // Chamada recursiva\n}',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '6',
+                category: 'JavaScript',
+                question: 'Como funciona a assincronia com Async/Await em JS?',
+                questionCode: '',
+                answer: 'Async/Await é uma sintaxe construída sobre Promises que permite escrever código assíncrono com aparência síncrona. A instrução "await" pausa a execução até que a Promise seja resolvida.',
+                answerCode: 'async function buscarDados() {\n  const res = await fetch("https://api.github.com");\n  const data = await res.json();\n  return data;\n}',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '7',
+                category: 'Python',
+                question: 'Qual a diferença entre uma Lista e uma Tupla em Python?',
+                questionCode: 'minha_lista = [1, 2, 3]\nminha_tupla = (1, 2, 3)',
+                answer: 'Listas são mutáveis (você pode alterar, adicionar ou remover elementos). Tuplas são imutáveis (não podem ser alteradas) e consomem menos memória.',
+                answerCode: '',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '8',
+                category: 'HTML/CSS',
+                question: 'Qual a diferença entre Flexbox e CSS Grid?',
+                questionCode: '',
+                answer: 'O Flexbox foi projetado para layouts unidimensionais (uma linha OU uma coluna). O CSS Grid foi projetado para layouts bidimensionais (linhas E colunas simultaneamente).',
+                answerCode: '/* Flexbox */\ndisplay: flex;\nflex-direction: row;\n\n/* Grid */\ndisplay: grid;\ngrid-template-columns: repeat(3, 1fr);',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '9',
+                category: 'React',
+                question: 'Para que serve o hook useEffect no React?',
+                questionCode: 'useEffect(() => {\n  document.title = `Total: ${count}`;\n}, [count]);',
+                answer: 'Permite executar efeitos colaterais em componentes funcionais, como buscar dados em APIs, configurar listeners ou manipular o DOM. O array de dependências controla quando o efeito deve ser reexecutado.',
+                answerCode: '',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '10',
+                category: 'JavaScript',
+                question: 'O que são Closures em JavaScript?',
+                questionCode: '',
+                answer: 'Uma closure é a combinação de uma função empacotada com referências ao seu estado ao redor (escopo léxico). Ela permite que uma função interna acesse o escopo de sua função pai mesmo após essa ter finalizado.',
+                answerCode: 'function criarContador() {\n  let count = 0;\n  return () => ++count;\n}\nconst contador = criarContador();\nconsole.log(contador()); // 1',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '11',
+                category: 'Lógica de Programação',
+                question: 'Qual a complexidade de tempo de busca em uma Tabela Hash (Dictionary)?',
+                questionCode: '',
+                answer: 'A busca em uma Tabela Hash tem complexidade média de O(1) [tempo constante], o que possibilita o resgate de valores por chave de forma extremamente veloz.',
+                answerCode: '',
+                difficulty: null,
+                mastered: false
+            },
+            {
+                id: '12',
+                category: 'Python',
+                question: 'O que faz o gerenciador de contexto "with" em Python?',
+                questionCode: 'with open("arquivo.txt", "r") as f:\n    conteudo = f.read()',
+                answer: 'Garante que os recursos sejam gerenciados e liberados adequadamente após a conclusão (ex: fechar arquivos automaticamente), mesmo se ocorrerem erros no código.',
+                answerCode: '',
+                difficulty: null,
+                mastered: false
+            }
+        ];
+
+        // Mapeamento de Cores e Gradientes Vibrantes por Categoria
+        const categoryThemes = {
+            'JavaScript': {
+                bg: 'bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-700',
+            },
+            'Python': {
+                bg: 'bg-gradient-to-br from-blue-600 via-indigo-600 to-sky-800',
+            },
+            'HTML/CSS': {
+                bg: 'bg-gradient-to-br from-orange-500 via-rose-600 to-pink-700',
+            },
+            'React': {
+                bg: 'bg-gradient-to-br from-cyan-500 via-teal-600 to-slate-800',
+            },
+            'Lógica de Programação': {
+                bg: 'bg-gradient-to-br from-purple-600 via-indigo-700 to-violet-900',
+            },
+            'Default': {
+                bg: 'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900',
+            }
+        };
+
+        // Estado da Aplicação
+        let cards = [];
+        let filteredCards = [];
+        let currentIndex = 0;
+        let isFlipped = false;
+        let activeCategory = 'Todos';
+
+        // Elementos do DOM
+        const cardInner = document.getElementById('card-inner');
+        const cardFront = document.getElementById('card-front');
+        const cardBack = document.getElementById('card-back');
+        const cardQuestion = document.getElementById('card-question');
+        const cardQuestionCode = document.getElementById('card-question-code');
+        const cardAnswer = document.getElementById('card-answer');
+        const cardAnswerCode = document.getElementById('card-answer-code');
+        const cardCategoryBadge = document.getElementById('card-category-badge');
+        const cardMasteredBadge = document.getElementById('card-mastered-badge');
+        const cardDifficultyTag = document.getElementById('card-difficulty-tag');
+        const cardIndicator = document.getElementById('card-indicator');
+        const progressBar = document.getElementById('progress-bar');
+        const categoryFilters = document.getElementById('category-filters');
+        const emptyState = document.getElementById('empty-state');
+        const statsCounter = document.getElementById('stats-counter');
+
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnFlipAction = document.getElementById('btn-flip-action');
+        const btnShuffle = document.getElementById('btn-shuffle');
+        const btnResetMastery = document.getElementById('btn-reset-mastery');
+        const btnDeleteCard = document.getElementById('btn-delete-card');
+        const btnToggleMaster = document.getElementById('btn-toggle-master');
+
+        // Modal Elements
+        const modalCreate = document.getElementById('modal-create');
+        const btnOpenModal = document.getElementById('btn-open-modal');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnCancelModal = document.getElementById('btn-cancel-modal');
+        const formCreateCard = document.getElementById('form-create-card');
+
+        // Inicialização
+        function init() {
+            loadCards();
+            renderCategoryFilters();
+            filterCards(activeCategory);
+            setupEventListeners();
+        }
+
+        // Carregar do LocalStorage
+        function loadCards() {
+            const savedCards = localStorage.getItem('dev_flashcards');
+            if (savedCards) {
+                try {
+                    cards = JSON.parse(savedCards);
+                } catch (e) {
+                    cards = [...initialCards];
+                }
+            } else {
+                cards = [...initialCards];
+                saveCards();
+            }
+        }
+
+        // Salvar no LocalStorage
+        function saveCards() {
+            localStorage.setItem('dev_flashcards', JSON.stringify(cards));
+        }
+
+        // Renderizar Filtros de Categoria
+        function renderCategoryFilters() {
+            const categories = ['Todos', 'JavaScript', 'Python', 'HTML/CSS', 'React', 'Lógica de Programação'];
+            categoryFilters.innerHTML = '';
+
+            categories.forEach(cat => {
+                const button = document.createElement('button');
+                button.className = `px-3.5 py-1.5 rounded-xl text-xs font-semibold transition border whitespace-nowrap ${
+                    activeCategory === cat 
+                        ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-600/30' 
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                }`;
+                button.innerText = cat;
+                button.onclick = () => filterCards(cat);
+                categoryFilters.appendChild(button);
+            });
+        }
+
+        // Filtrar Lista
+        function filterCards(category) {
+            activeCategory = category;
+            renderCategoryFilters();
+
+            if (category === 'Todos') {
+                filteredCards = [...cards];
+            } else {
+                filteredCards = cards.filter(c => c.category === category);
+            }
+
+            currentIndex = 0;
+            isFlipped = false;
+            updateCardUI();
+        }
+
+        function resetFilters() {
+            filterCards('Todos');
+        }
+
+        // Atualizar Interface do Flashcard Atual
+        function updateCardUI() {
+            if (isFlipped) {
+                cardInner.classList.remove('rotate-y-180');
+                isFlipped = false;
+            }
+
+            statsCounter.innerText = `${cards.length} Cards Total`;
+
+            if (filteredCards.length === 0) {
+                emptyState.classList.remove('hidden');
+                cardInner.classList.add('hidden');
+                cardIndicator.innerText = `0 de 0`;
+                progressBar.style.width = `0%`;
+                btnPrev.disabled = true;
+                btnNext.disabled = true;
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            cardInner.classList.remove('hidden');
+
+            const currentCard = filteredCards[currentIndex];
+
+            // Progresso
+            cardIndicator.innerText = `${currentIndex + 1} de ${filteredCards.length}`;
+            const progressPercent = ((currentIndex + 1) / filteredCards.length) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+
+            // Botões Navegação
+            btnPrev.disabled = currentIndex === 0;
+            btnNext.disabled = currentIndex === filteredCards.length - 1;
+
+            // Tema visual
+            const theme = categoryThemes[currentCard.category] || categoryThemes['Default'];
+
+            // Aplicar Estilo Frontal
+            cardFront.className = `absolute inset-0 w-full h-full backface-hidden rounded-3xl p-6 sm:p-8 flex flex-col justify-between border border-white/20 card-shadow transition-all duration-300 ${theme.bg}`;
+            
+            // Pergunta (Frente)
+            cardCategoryBadge.innerText = currentCard.category;
+            cardQuestion.innerText = currentCard.question;
+
+            if (currentCard.questionCode && currentCard.questionCode.trim() !== '') {
+                cardQuestionCode.innerText = currentCard.questionCode;
+                cardQuestionCode.classList.remove('hidden');
+            } else {
+                cardQuestionCode.classList.add('hidden');
+            }
+
+            // Dominado Badge
+            if (currentCard.mastered) {
+                cardMasteredBadge.classList.remove('hidden');
+                btnToggleMaster.className = "text-xs font-medium px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40";
+                btnToggleMaster.innerHTML = '<i class="fa-solid fa-check-double text-emerald-400"></i> Dominado';
+            } else {
+                cardMasteredBadge.classList.add('hidden');
+                btnToggleMaster.className = "text-xs font-medium px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700";
+                btnToggleMaster.innerHTML = '<i class="fa-solid fa-check"></i> Marcar como Dominado';
+            }
+
+            // Resposta (Verso)
+            cardAnswer.innerText = currentCard.answer;
+
+            if (currentCard.answerCode && currentCard.answerCode.trim() !== '') {
+                cardAnswerCode.innerText = currentCard.answerCode;
+                cardAnswerCode.classList.remove('hidden');
+            } else {
+                cardAnswerCode.classList.add('hidden');
+            }
+
+            // Dificuldade
+            if (currentCard.difficulty === 'Facil') {
+                cardDifficultyTag.className = 'text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                cardDifficultyTag.innerText = 'Fácil';
+            } else if (currentCard.difficulty === 'Medio') {
+                cardDifficultyTag.className = 'text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30';
+                cardDifficultyTag.innerText = 'Médio';
+            } else if (currentCard.difficulty === 'Dificil') {
+                cardDifficultyTag.className = 'text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30';
+                cardDifficultyTag.innerText = 'Difícil';
+            } else {
+                cardDifficultyTag.className = 'text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700';
+                cardDifficultyTag.innerText = 'Não avaliado';
+            }
+        }
+
+        // Girar Cartão (Flip 3D)
+        function toggleFlip() {
+            if (filteredCards.length === 0) return;
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+                cardInner.classList.add('rotate-y-180');
+            } else {
+                cardInner.classList.remove('rotate-y-180');
+            }
+        }
+
+        // Autoavaliação
+        function rateCard(level) {
+            if (filteredCards.length === 0) return;
+            const currentCard = filteredCards[currentIndex];
+            currentCard.difficulty = level;
+            
+            const index = cards.findIndex(c => c.id === currentCard.id);
+            if (index !== -1) {
+                cards[index].difficulty = level;
+                saveCards();
+            }
+
+            updateCardUI();
+
+            // Avançar pro próximo automaticamente
+            setTimeout(() => {
+                if (currentIndex < filteredCards.length - 1) {
+                    currentIndex++;
+                    updateCardUI();
+                }
+            }, 300);
+        }
+
+        // Dominado
+        function toggleMastery() {
+            if (filteredCards.length === 0) return;
+            const currentCard = filteredCards[currentIndex];
+            currentCard.mastered = !currentCard.mastered;
+
+            const index = cards.findIndex(c => c.id === currentCard.id);
+            if (index !== -1) {
+                cards[index].mastered = currentCard.mastered;
+                saveCards();
+            }
+
+            updateCardUI();
+        }
+
+        // Embaralhar
+        function shuffleCards() {
+            if (filteredCards.length <= 1) return;
+            
+            for (let i = filteredCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [filteredCards[i], filteredCards[j]] = [filteredCards[j], filteredCards[i]];
+            }
+
+            currentIndex = 0;
+            isFlipped = false;
+            updateCardUI();
+        }
+
+        // Excluir Card
+        function deleteCurrentCard() {
+            if (filteredCards.length === 0) return;
+            const currentCard = filteredCards[currentIndex];
+
+            cards = cards.filter(c => c.id !== currentCard.id);
+            saveCards();
+
+            filterCards(activeCategory);
+        }
+
+        // Resetar Aprendizado
+        function resetMastery() {
+            cards.forEach(c => {
+                c.mastered = false;
+                c.difficulty = null;
+            });
+            saveCards();
+            updateCardUI();
+        }
+
+        // Configurar Eventos
+        function setupEventListeners() {
+            cardInner.addEventListener('click', toggleFlip);
+            btnFlipAction.addEventListener('click', toggleFlip);
+
+            btnPrev.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateCardUI();
+                }
+            });
+
+            btnNext.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentIndex < filteredCards.length - 1) {
+                    currentIndex++;
+                    updateCardUI();
+                }
+            });
+
+            // Teclas de atalho
+            document.addEventListener('keydown', (e) => {
+                if (!modalCreate.classList.contains('hidden')) return;
+                
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    toggleFlip();
+                } else if (e.code === 'ArrowRight' && currentIndex < filteredCards.length - 1) {
+                    currentIndex++;
+                    updateCardUI();
+                } else if (e.code === 'ArrowLeft' && currentIndex > 0) {
+                    currentIndex--;
+                    updateCardUI();
+                }
+            });
+
+            btnShuffle.addEventListener('click', shuffleCards);
+            btnResetMastery.addEventListener('click', resetMastery);
+            btnDeleteCard.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteCurrentCard();
+            });
+            btnToggleMaster.addEventListener('click', toggleMastery);
+
+            // Modal
+            btnOpenModal.addEventListener('click', () => modalCreate.classList.remove('hidden'));
+            btnCloseModal.addEventListener('click', () => modalCreate.classList.add('hidden'));
+            btnCancelModal.addEventListener('click', () => modalCreate.classList.add('hidden'));
+
+            // Formulário
+            formCreateCard.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const newCard = {
+                    id: Date.now().toString(),
+                    category: document.getElementById('input-category').value,
+                    question: document.getElementById('input-question').value.trim(),
+                    questionCode: document.getElementById('input-question-code').value.trim(),
+                    answer: document.getElementById('input-answer').value.trim(),
+                    answerCode: document.getElementById('input-answer-code').value.trim(),
+                    difficulty: null,
+                    mastered: false
+                };
+
+                cards.unshift(newCard);
+                saveCards();
+
+                formCreateCard.reset();
+                modalCreate.classList.add('hidden');
+
+                filterCards(newCard.category);
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
